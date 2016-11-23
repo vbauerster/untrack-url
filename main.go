@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/skratchdot/open-golang/open"
 )
 
 const maxRedirects = 10
@@ -47,7 +49,7 @@ func main() {
 
 	url := parseURL(args[0])
 	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
@@ -64,7 +66,6 @@ func visit(client *http.Client, url *url.URL) {
 	if locParam, ok := redirectHosts[url.Host]; ok {
 		fmt.Println(locParam)
 		fmt.Printf("redirectHost = %+v\n", url)
-		// fmt.Printf("url.Query = %+v\n", url.Query())
 		loc := url.Query().Get(locParam)
 		if loc == "" {
 			log.Fatalf("%q has no %q param", url.String(), locParam)
@@ -92,6 +93,7 @@ func visit(client *http.Client, url *url.URL) {
 			}
 		}
 		fmt.Printf("lurl = %+v\n", lurl)
+		open.Start(lurl.String())
 		return
 	}
 
