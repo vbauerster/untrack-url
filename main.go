@@ -14,7 +14,11 @@ import (
 
 const maxRedirects = 10
 
-var redirectsFollowed int
+var (
+	redirectsFollowed int
+	printOnly         bool
+	debug             bool
+)
 
 type directive struct {
 	ParamsToDel []string
@@ -31,19 +35,30 @@ var redirectHosts = map[string]string{
 var locations = make(map[string]directive)
 
 func init() {
+	flag.BoolVar(&printOnly, "p", false, "print only: don't open URL in browser")
+	flag.BoolVar(&debug, "d", false, "debug: print debug info")
+
 	locations["ru.aliexpress.com"] = directive{NoQuery: true}
 	// locations["www.gearbest.com"] = directive{ParamsToDel: []string{"wid"}}
 	locations["www.gearbest.com"] = directive{NoQuery: true}
 	locations["www.coolicool.com"] = directive{NoQuery: true}
 	locations["www.tinydeal.com"] = directive{NoQuery: true}
 	locations["letyshops.ru"] = directive{NoQuery: true, NoPath: true, Scheme: "https"}
+
+	flag.Usage = usage
+}
+
+func usage() {
+	fmt.Fprintf(os.Stderr, "Usage: radali [OPTIONS] URL\n\n")
+	fmt.Fprintln(os.Stderr, "OPTIONS:")
+	flag.PrintDefaults()
 }
 
 func main() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) != 1 {
-		// flag.Usage()
+		flag.Usage()
 		os.Exit(2)
 	}
 
@@ -64,18 +79,21 @@ func visit(client *http.Client, url *url.URL) {
 	resp.Body.Close()
 
 	if locParam, ok := redirectHosts[url.Host]; ok {
-		fmt.Println(locParam)
-		fmt.Printf("redirectHost = %+v\n", url)
 		loc := url.Query().Get(locParam)
 		if loc == "" {
 			log.Fatalf("%q has no %q param", url.String(), locParam)
 		}
 		lurl := parseURL(loc)
-		fmt.Printf("lurl = %+v\n", lurl)
+		if debug {
+			fmt.Printf("redirectHost = %+v\n", url)
+			fmt.Printf("%s = %+v\n", locParam, lurl)
+		}
 		if dir, ok := locations[lurl.Host]; ok {
-			fmt.Printf("dir = %+v\n", dir)
-			fmt.Printf("lurl.Path = %+v\n", lurl.Path)
-			fmt.Printf("lurl.RawQuery = %+v\n", lurl.RawQuery)
+			if debug {
+				fmt.Printf("dir = %+v\n", dir)
+				fmt.Printf("%s.Path = %+v\n", locParam, lurl.Path)
+				fmt.Printf("%s.RawQuery = %+v\n", locParam, lurl.RawQuery)
+			}
 			if dir.NoQuery {
 				lurl.RawQuery = ""
 			} else if len(dir.ParamsToDel) != 0 {
@@ -92,8 +110,11 @@ func visit(client *http.Client, url *url.URL) {
 				lurl.Scheme = dir.Scheme
 			}
 		}
-		fmt.Printf("lurl = %+v\n", lurl)
-		open.Start(lurl.String())
+		if printOnly || debug {
+			fmt.Println(lurl)
+		} else {
+			open.Start(lurl.String())
+		}
 		return
 	}
 
