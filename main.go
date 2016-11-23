@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/skratchdot/open-golang/open"
@@ -15,9 +16,16 @@ import (
 const maxRedirects = 10
 
 var (
+	// Command line flags.
+	printOnly   bool
+	debug       bool
+	showVersion bool
+
+	// number of redirects followed
 	redirectsFollowed int
-	printOnly         bool
-	debug             bool
+
+	version     = "0.0.1"
+	projectHome = "https://github.com/vbauerster/radali"
 )
 
 type directive struct {
@@ -37,6 +45,7 @@ var locations = make(map[string]directive)
 func init() {
 	flag.BoolVar(&printOnly, "p", false, "print only: don't open URL in browser")
 	flag.BoolVar(&debug, "d", false, "debug: print debug info")
+	flag.BoolVar(&showVersion, "v", false, "print version number")
 
 	locations["ru.aliexpress.com"] = directive{NoQuery: true}
 	// locations["www.gearbest.com"] = directive{ParamsToDel: []string{"wid"}}
@@ -52,10 +61,18 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "Usage: radali [OPTIONS] URL\n\n")
 	fmt.Fprintln(os.Stderr, "OPTIONS:")
 	flag.PrintDefaults()
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintf(os.Stderr, "project home: %s\n", projectHome)
 }
 
 func main() {
 	flag.Parse()
+
+	if showVersion {
+		fmt.Printf("radali %s (runtime: %s)\n", version, runtime.Version())
+		os.Exit(0)
+	}
+
 	args := flag.Args()
 	if len(args) != 1 {
 		flag.Usage()
