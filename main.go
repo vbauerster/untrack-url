@@ -96,42 +96,7 @@ func visit(client *http.Client, url *url.URL) {
 	resp.Body.Close()
 
 	if locParam, ok := redirectHosts[url.Host]; ok {
-		loc := url.Query().Get(locParam)
-		if loc == "" {
-			log.Fatalf("%q has no %q param", url.String(), locParam)
-		}
-		lurl := parseURL(loc)
-		if debug {
-			fmt.Printf("redirectHost = %+v\n", url)
-			fmt.Printf("%s = %+v\n", locParam, lurl)
-		}
-		if dir, ok := locations[lurl.Host]; ok {
-			if debug {
-				fmt.Printf("dir = %+v\n", dir)
-				fmt.Printf("%s.Path = %+v\n", locParam, lurl.Path)
-				fmt.Printf("%s.RawQuery = %+v\n", locParam, lurl.RawQuery)
-			}
-			if dir.NoQuery {
-				lurl.RawQuery = ""
-			} else if len(dir.ParamsToDel) != 0 {
-				v := lurl.Query()
-				for _, param := range dir.ParamsToDel {
-					v.Del(param)
-				}
-				lurl.RawQuery = v.Encode()
-			}
-			if dir.NoPath {
-				lurl.Path = ""
-			}
-			if dir.Scheme != "" {
-				lurl.Scheme = dir.Scheme
-			}
-		}
-		if printOnly || debug {
-			fmt.Println(lurl)
-		} else {
-			open.Start(lurl.String())
-		}
+		removeAds(locParam, url)
 		return
 	}
 
@@ -151,6 +116,45 @@ func visit(client *http.Client, url *url.URL) {
 		}
 
 		visit(client, loc)
+	}
+}
+
+func removeAds(locParam string, url *url.URL) {
+	loc := url.Query().Get(locParam)
+	if loc == "" {
+		log.Fatalf("%q has no %q param", url.String(), locParam)
+	}
+	lurl := parseURL(loc)
+	if debug {
+		fmt.Printf("redirectHost = %+v\n", url)
+		fmt.Printf("%s = %+v\n", locParam, lurl)
+	}
+	if dir, ok := locations[lurl.Host]; ok {
+		if debug {
+			fmt.Printf("dir = %+v\n", dir)
+			fmt.Printf("%s.Path = %+v\n", locParam, lurl.Path)
+			fmt.Printf("%s.RawQuery = %+v\n", locParam, lurl.RawQuery)
+		}
+		if dir.NoQuery {
+			lurl.RawQuery = ""
+		} else if len(dir.ParamsToDel) != 0 {
+			v := lurl.Query()
+			for _, param := range dir.ParamsToDel {
+				v.Del(param)
+			}
+			lurl.RawQuery = v.Encode()
+		}
+		if dir.NoPath {
+			lurl.Path = ""
+		}
+		if dir.Scheme != "" {
+			lurl.Scheme = dir.Scheme
+		}
+	}
+	if printOnly || debug {
+		fmt.Println(lurl)
+	} else {
+		open.Start(lurl.String())
 	}
 }
 
