@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -21,7 +20,6 @@ func TestFollow(t *testing.T) {
 
 	debug = true
 	redirectHosts[tsURL.Host] = lparam
-	fmt.Printf("redirectHosts = %+v\n", redirectHosts)
 
 	gotRef := follow(ts.URL + "/redirect")
 	if gotRef != ref {
@@ -35,6 +33,5 @@ func setupTestServer(lparam, loc string) *httptest.Server {
 	mux.HandleFunc("/redirect", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/deep_link.htm?"+v.Encode(), 302)
 	})
-	ts := httptest.NewServer(mux)
-	return ts
+	return httptest.NewServer(mux)
 }

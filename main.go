@@ -131,28 +131,28 @@ func follow(url string) (ref string) {
 }
 
 func removeAds(ref string) string {
-	lurl := parseURL(ref)
-	if dir, ok := locations[lurl.Host]; ok {
+	url := parseURL(ref)
+	if dir, ok := locations[url.Host]; ok {
 		if debug {
 			fmt.Printf("dir = %+v\n", dir)
 		}
 		if dir.NoQuery {
-			lurl.RawQuery = ""
+			url.RawQuery = ""
 		} else if len(dir.ParamsToDel) != 0 {
-			v := lurl.Query()
+			v := url.Query()
 			for _, param := range dir.ParamsToDel {
 				v.Del(param)
 			}
-			lurl.RawQuery = v.Encode()
+			url.RawQuery = v.Encode()
 		}
 		if dir.NoPath {
-			lurl.Path = ""
+			url.Path = ""
 		}
 		if dir.Scheme != "" {
-			lurl.Scheme = dir.Scheme
+			url.Scheme = dir.Scheme
 		}
 	}
-	return lurl.String()
+	return url.String()
 }
 
 func parseURL(uri string) *url.URL {
