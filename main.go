@@ -76,9 +76,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	url := parseURL(args[0])
-
-	target := removeAds(follow(url))
+	target := removeAds(follow(args[0]))
 	if printOnly || debug {
 		fmt.Println(target)
 	} else {
@@ -86,15 +84,15 @@ func main() {
 	}
 }
 
-func follow(url *url.URL) (next *url.URL, lparam string) {
+func follow(url string) (ref string) {
 	// number of redirects followed
 	var redirectsFollowed int
-	next = url
 	client := &http.Client{
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
+	next := parseURL(url)
 	for {
 		resp, err := client.Get(next.String())
 		if err != nil {
@@ -102,8 +100,13 @@ func follow(url *url.URL) (next *url.URL, lparam string) {
 		}
 		resp.Body.Close()
 
-		if lparam = redirectHosts[next.Host]; lparam != "" {
-			break
+		if p := redirectHosts[next.Host]; p != "" {
+			if ref = next.Query().Get(p); ref != "" {
+				if debug {
+					fmt.Printf("found ref: %q\n", next)
+				}
+				break
+			}
 		}
 
 		if isRedirect(resp.StatusCode) {
@@ -127,21 +130,11 @@ func follow(url *url.URL) (next *url.URL, lparam string) {
 	return
 }
 
-func removeAds(url *url.URL, lparam string) string {
-	loc := url.Query().Get(lparam)
-	if loc == "" {
-		log.Fatalf("unsupported location: %q", url.String())
-	}
-	lurl := parseURL(loc)
-	if debug {
-		fmt.Printf("redirectHost = %+v\n", url)
-		fmt.Printf("%s = %+v\n", lparam, lurl)
-	}
+func removeAds(ref string) string {
+	lurl := parseURL(ref)
 	if dir, ok := locations[lurl.Host]; ok {
 		if debug {
 			fmt.Printf("dir = %+v\n", dir)
-			fmt.Printf("%s.Path = %+v\n", lparam, lurl.Path)
-			fmt.Printf("%s.RawQuery = %+v\n", lparam, lurl.RawQuery)
 		}
 		if dir.NoQuery {
 			lurl.RawQuery = ""

@@ -10,21 +10,22 @@ import (
 
 func TestFollow(t *testing.T) {
 	lparam := "dl_target_url"
-	ts := setupTestServer(lparam, "https://ru.aliexpress.com")
+	ref := "https://ru.aliexpress.com"
+	ts := setupTestServer(lparam, ref)
 	defer ts.Close()
 
-	fmt.Printf("ts.URL = %+v\n", ts.URL)
-	fmt.Printf("ts.Config = %+v\n", ts.Config)
-	fmt.Printf("ts.Config.Handler = %+v\n", ts.Config.Handler)
+	tsURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	debug = true
-	redirectHosts["127.0.0.1"] = lparam
+	redirectHosts[tsURL.Host] = lparam
 	fmt.Printf("redirectHosts = %+v\n", redirectHosts)
 
-	url, param := follow(parseURL(ts.URL + "/redirect"))
-	fmt.Printf("url = %+v\n", url)
-	if param != "dl_target_url" {
-		t.Errorf("unexpected param: %s", param)
+	gotRef := follow(ts.URL + "/redirect")
+	if gotRef != ref {
+		t.Errorf("Got ref: %q\nExpected ref: %q\n", gotRef, ref)
 	}
 }
 
