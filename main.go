@@ -84,7 +84,7 @@ func main() {
 	}
 }
 
-func follow(url string) (ref string) {
+func follow(url string) string {
 	// number of redirects followed
 	var redirectsFollowed int
 	client := &http.Client{
@@ -100,34 +100,31 @@ func follow(url string) (ref string) {
 		}
 		resp.Body.Close()
 
-		if p := redirectHosts[next.Host]; p != "" {
-			if ref = next.Query().Get(p); ref != "" {
-				if debug {
-					fmt.Printf("found ref: %q\n", next)
-				}
-				break
-			}
-		}
-
 		if isRedirect(resp.StatusCode) {
-			next, err = resp.Location()
+			loc, err := resp.Location()
 			if err != nil {
-				if err == http.ErrNoLocation {
-					// 30x but no Location to follow, give up.
-					break
-				}
 				log.Fatalf("unable to follow redirect: %v", err)
+			}
+
+			if p, ok := redirectHosts[next.Host]; ok {
+				if _, ok = next.Query()[p]; ok {
+					if debug {
+						fmt.Printf("found ref: %q\n", loc)
+					}
+					return loc.String()
+				}
 			}
 
 			redirectsFollowed++
 			if redirectsFollowed > maxRedirects {
 				log.Fatalf("maximum number of redirects (%d) followed", maxRedirects)
 			}
+			next = loc
 		} else {
 			break
 		}
 	}
-	return
+	return ""
 }
 
 func removeAds(ref string) string {
