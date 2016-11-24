@@ -31,7 +31,7 @@ func TestRemoveKnownAds(t *testing.T) {
 	gear := "http://www.gearbest.com/cell-phones/pp_471491.html?wid=21&admitad_uid=75984b1e4bfdbbda9d4238493f856147"
 	cool := "http://www.coolicool.com/xiaomi-mi-5s-ultrasonic-fingerprint-3gb-ram-32gb-rom-qualcomm-snapdragon-821-215ghz-quad-core-515-g-44250?utm_source=admitad&utm_medium=referral&admitad_uid=953908711f4f569b3e8acdf0f3ef7ba6"
 	tiny := "http://www.tinydeal.com/xiaomi-mi-5s-515-fhd-snapdragon-821-quad-core-android-60-4g-phone-px369k7-p-162019.html?admitad_uid=42926493e6f007492b134a881528cd45&utm_source=admitad&utm_medium=referral&utm_campaign=admitad"
-	lety := "https://letyshops.ru/Andronews?admitad_uid=ccdfdeb8f26902ba663c79463dbec762&publisher_id=251289"
+	lety := "http://letyshops.ru/Andronews?admitad_uid=ccdfdeb8f26902ba663c79463dbec762&publisher_id=251289"
 
 	var tests = []struct {
 		in  string
