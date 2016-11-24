@@ -21,7 +21,7 @@ var (
 	debug       bool
 	showVersion bool
 
-	version     = "0.0.1"
+	version     = "1.0.0-beta"
 	projectHome = "https://github.com/vbauerster/radali"
 )
 
