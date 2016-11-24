@@ -21,9 +21,6 @@ var (
 	debug       bool
 	showVersion bool
 
-	// number of redirects followed
-	redirectsFollowed int
-
 	version     = "0.0.1"
 	projectHome = "https://github.com/vbauerster/radali"
 )
@@ -80,60 +77,71 @@ func main() {
 	}
 
 	url := parseURL(args[0])
+
+	target := removeAds(follow(url))
+	if printOnly || debug {
+		fmt.Println(target)
+	} else {
+		open.Start(target)
+	}
+}
+
+func follow(url *url.URL) (next *url.URL, lparam string) {
+	// number of redirects followed
+	var redirectsFollowed int
+	next = url
 	client := &http.Client{
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
-	visit(client, url)
-}
-
-func visit(client *http.Client, url *url.URL) {
-	resp, err := client.Get(url.String())
-	if err != nil {
-		log.Fatalf("failed to read response: %v", err)
-	}
-	resp.Body.Close()
-
-	if locParam, ok := redirectHosts[url.Host]; ok {
-		removeAds(locParam, url)
-		return
-	}
-
-	if isRedirect(resp.StatusCode) {
-		loc, err := resp.Location()
+	for {
+		resp, err := client.Get(next.String())
 		if err != nil {
-			if err == http.ErrNoLocation {
-				// 30x but no Location to follow, give up.
-				return
+			log.Fatalf("failed to read response: %v", err)
+		}
+		resp.Body.Close()
+
+		if lparam = redirectHosts[next.Host]; lparam != "" {
+			break
+		}
+
+		if isRedirect(resp.StatusCode) {
+			next, err = resp.Location()
+			if err != nil {
+				if err == http.ErrNoLocation {
+					// 30x but no Location to follow, give up.
+					break
+				}
+				log.Fatalf("unable to follow redirect: %v", err)
 			}
-			log.Fatalf("unable to follow redirect: %v", err)
-		}
 
-		redirectsFollowed++
-		if redirectsFollowed > maxRedirects {
-			log.Fatalf("maximum number of redirects (%d) followed", maxRedirects)
+			redirectsFollowed++
+			if redirectsFollowed > maxRedirects {
+				log.Fatalf("maximum number of redirects (%d) followed", maxRedirects)
+			}
+		} else {
+			break
 		}
-
-		visit(client, loc)
 	}
+	return
 }
 
-func removeAds(locParam string, url *url.URL) {
-	loc := url.Query().Get(locParam)
+func removeAds(url *url.URL, lparam string) string {
+	loc := url.Query().Get(lparam)
 	if loc == "" {
-		log.Fatalf("%q has no %q param", url.String(), locParam)
+		log.Fatalf("unsupported location: %q", url.String())
 	}
 	lurl := parseURL(loc)
 	if debug {
 		fmt.Printf("redirectHost = %+v\n", url)
-		fmt.Printf("%s = %+v\n", locParam, lurl)
+		fmt.Printf("%s = %+v\n", lparam, lurl)
 	}
 	if dir, ok := locations[lurl.Host]; ok {
 		if debug {
 			fmt.Printf("dir = %+v\n", dir)
-			fmt.Printf("%s.Path = %+v\n", locParam, lurl.Path)
-			fmt.Printf("%s.RawQuery = %+v\n", locParam, lurl.RawQuery)
+			fmt.Printf("%s.Path = %+v\n", lparam, lurl.Path)
+			fmt.Printf("%s.RawQuery = %+v\n", lparam, lurl.RawQuery)
 		}
 		if dir.NoQuery {
 			lurl.RawQuery = ""
@@ -151,11 +159,7 @@ func removeAds(locParam string, url *url.URL) {
 			lurl.Scheme = dir.Scheme
 		}
 	}
-	if printOnly || debug {
-		fmt.Println(lurl)
-	} else {
-		open.Start(lurl.String())
-	}
+	return lurl.String()
 }
 
 func parseURL(uri string) *url.URL {
