@@ -7,22 +7,35 @@ import (
 	"testing"
 )
 
-func TestFollow(t *testing.T) {
-	lparam := "dl_target_url"
-	ref := "https://ru.aliexpress.com"
-	ts := setupTestServer(lparam, ref)
-	defer ts.Close()
+func setupTestServer(ref, param string) *httptest.Server {
+	v := url.Values{param: {ref}}
+	mux := http.NewServeMux()
+	mux.Handle("/redirect", http.RedirectHandler("/ref?"+v.Encode(), 302))
+	mux.Handle("/ref", http.RedirectHandler(ref, 302))
+	return httptest.NewServer(mux)
+}
 
-	tsURL, err := url.Parse(ts.URL)
-	if err != nil {
-		t.Fatal(err)
+func TestFollow(t *testing.T) {
+	params := make([]string, 0, len(redirectHosts))
+	for _, v := range redirectHosts {
+		params = append(params, v)
 	}
 
-	debug = true
-	redirectHosts[tsURL.Host] = lparam
+	dummyRef := "http://dummy.org"
+	for _, param := range params {
+		ts := setupTestServer(dummyRef, param)
+		defer ts.Close()
 
-	if gotRef := follow(ts.URL + "/redirect"); gotRef != ref {
-		t.Errorf("\nExpected ref: %q\nGot ref: %q\n", ref, gotRef)
+		tsURL, err := url.Parse(ts.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		redirectHosts[tsURL.Host] = param
+
+		if ref := follow(ts.URL + "/redirect"); ref != dummyRef {
+			t.Errorf("\nExpected ref: %q\nGot ref: %q\n", dummyRef, ref)
+		}
 	}
 }
 
@@ -100,12 +113,4 @@ func TestRemoveAdsArbitraryParam(t *testing.T) {
 			}
 		}
 	}
-}
-
-func setupTestServer(lparam, ref string) *httptest.Server {
-	v := url.Values{lparam: {ref}}
-	mux := http.NewServeMux()
-	mux.Handle("/redirect", http.RedirectHandler("/ref?"+v.Encode(), 302))
-	mux.Handle("/ref", http.RedirectHandler(ref, 302))
-	return httptest.NewServer(mux)
 }
