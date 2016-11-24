@@ -131,7 +131,7 @@ func removeAds(ref string) string {
 	url := parseURL(ref)
 	if dir, ok := locations[url.Host]; ok {
 		if debug {
-			fmt.Printf("dir = %+v\n", dir)
+			fmt.Printf("%s = %+v\n", url.Host, dir)
 		}
 		if dir.NoQuery {
 			url.RawQuery = ""
