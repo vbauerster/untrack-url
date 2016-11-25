@@ -12,7 +12,7 @@ But you can stop this, with the help of tiny cmd tool.
 **radali** will inspect where short url points to, and remove any referral query params,
 before opening target url in default web browser.
 
-At the moment following online markets supported:
+At the moment following online markets are supported:
 
 * [aliexpress](https://ru.aliexpress.com)
 * [gearbest](http://www.gearbest.com)
