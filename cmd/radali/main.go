@@ -8,21 +8,26 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/skratchdot/open-golang/open"
 )
 
-const maxRedirects = 10
+const (
+	maxRedirects = 10
+	projectHome  = "https://github.com/vbauerster/radali"
+	cmdName      = "radali"
+)
 
 var (
+	version = "1.0.0-beta"
 	// Command line flags.
 	printOnly   bool
 	debug       bool
 	showVersion bool
-
-	version     = "1.0.0-beta"
-	projectHome = "https://github.com/vbauerster/radali"
+	// FlagSet
+	cmd *flag.FlagSet
 )
 
 type directive struct {
@@ -40,39 +45,46 @@ var redirectHosts = map[string]string{
 var locations = make(map[string]directive)
 
 func init() {
-	flag.BoolVar(&printOnly, "p", false, "print only: don't open URL in browser")
-	flag.BoolVar(&debug, "d", false, "debug: print debug info")
-	flag.BoolVar(&showVersion, "v", false, "print version number")
+	cmd = flag.NewFlagSet(cmdName, flag.ExitOnError)
+	cmd.BoolVar(&printOnly, "p", false, "print only: don't open URL in browser")
+	cmd.BoolVar(&debug, "d", false, "debug: print debug info")
+	cmd.BoolVar(&showVersion, "v", false, "print version number")
 
 	locations["ru.aliexpress.com"] = directive{NoQuery: true}
-	// locations["www.gearbest.com"] = directive{ParamsToDel: []string{"wid"}}
 	locations["www.gearbest.com"] = directive{NoQuery: true}
 	locations["www.coolicool.com"] = directive{NoQuery: true}
 	locations["www.tinydeal.com"] = directive{NoQuery: true}
 	locations["letyshops.ru"] = directive{NoQuery: true, NoPath: true, Scheme: "https"}
 
-	flag.Usage = usage
+	cmd.Usage = usage
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "Usage: radali [OPTIONS] URL\n\n")
-	fmt.Fprintln(os.Stderr, "OPTIONS:")
-	flag.PrintDefaults()
-	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintf(os.Stderr, "project home: %s\n", projectHome)
+	fmt.Printf("Usage: %s [OPTIONS] URL\n\n", cmdName)
+	fmt.Println("OPTIONS:")
+	cmd.SetOutput(os.Stdout)
+	cmd.PrintDefaults()
+	fmt.Println()
+	fmt.Println("Supported resources:")
+	fmt.Println()
+	for _, loc := range supportedLocations() {
+		fmt.Printf("\t%s\n", loc)
+	}
+	fmt.Println()
+	fmt.Printf("project home: %s\n", projectHome)
 }
 
 func main() {
-	flag.Parse()
+	cmd.Parse(os.Args[1:])
 
 	if showVersion {
-		fmt.Printf("radali %s (runtime: %s)\n", version, runtime.Version())
+		fmt.Printf("%s %s (runtime: %s)\n", cmdName, version, runtime.Version())
 		os.Exit(0)
 	}
 
-	args := flag.Args()
+	args := cmd.Args()
 	if len(args) != 1 {
-		flag.Usage()
+		cmd.Usage()
 		os.Exit(2)
 	}
 
@@ -128,6 +140,17 @@ func follow(url string) string {
 }
 
 func removeAds(ref string) string {
+	if ref == "" {
+		fmt.Println("Nothing found!")
+		fmt.Println("Supported resources:")
+		fmt.Println()
+		for _, loc := range supportedLocations() {
+			fmt.Printf("\t%s\n", loc)
+		}
+		fmt.Println()
+		fmt.Printf("To add new resources, please submit issue at: %s\n", projectHome)
+		os.Exit(1)
+	}
 	url := parseURL(ref)
 	if dir, ok := locations[url.Host]; ok {
 		if debug {
@@ -169,6 +192,15 @@ func parseURL(uri string) *url.URL {
 		}
 	}
 	return url
+}
+
+func supportedLocations() []string {
+	supported := make([]string, 0, len(locations))
+	for k := range locations {
+		supported = append(supported, k)
+	}
+	sort.Strings(supported)
+	return supported
 }
 
 func isRedirect(status int) bool {
