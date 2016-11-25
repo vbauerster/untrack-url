@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	version = "1.0.0"
+	version = "devel"
 	// Command line flags.
 	printOnly   bool
 	debug       bool
