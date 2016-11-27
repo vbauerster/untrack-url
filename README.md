@@ -36,3 +36,7 @@ OPTIONS:
   -p    print only: don't open URL in browser
   -v    print version number
 ```
+
+## License
+
+This program is under [WTFPL license](http://www.wtfpl.net)
