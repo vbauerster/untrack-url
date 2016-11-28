@@ -40,6 +40,7 @@ type directive struct {
 var redirectHosts = map[string]string{
 	"s.click.aliexpress.com": "dl_target_url",
 	"ad.admitad.com":         "ulp",
+	"lenkmio.com":            "ulp",
 }
 
 var locations = make(map[string]directive)
