@@ -46,7 +46,7 @@ var redirectHosts = map[string]string{
 var locations = make(map[string]directive)
 
 func init() {
-	cmd = flag.NewFlagSet(cmdName, flag.ExitOnError)
+	cmd = flag.NewFlagSet(cmdName, flag.ContinueOnError)
 	cmd.BoolVar(&printOnly, "p", false, "print only: don't open URL in browser")
 	cmd.BoolVar(&debug, "d", false, "debug: print debug info")
 	cmd.BoolVar(&showVersion, "v", false, "print version number")
@@ -77,7 +77,13 @@ func usage() {
 }
 
 func main() {
-	cmd.Parse(os.Args[1:])
+	if err := cmd.Parse(os.Args[1:]); err != nil {
+		if err == flag.ErrHelp {
+			os.Exit(0)
+		} else {
+			os.Exit(1)
+		}
+	}
 
 	if showVersion {
 		fmt.Printf("%s %s (runtime: %s)\n", cmdName, version, runtime.Version())
