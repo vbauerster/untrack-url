@@ -55,6 +55,7 @@ func init() {
 	locations["www.gearbest.com"] = directive{NoQuery: true}
 	locations["www.coolicool.com"] = directive{NoQuery: true}
 	locations["www.tinydeal.com"] = directive{NoQuery: true}
+	locations["www.banggood.com"] = directive{NoQuery: true}
 	locations["letyshops.ru"] = directive{NoQuery: true, NoPath: true, Scheme: "https"}
 
 	cmd.Usage = usage
