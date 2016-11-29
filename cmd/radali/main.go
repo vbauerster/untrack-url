@@ -50,7 +50,7 @@ var redirectHosts = map[string]string{
 var locations = make(map[string]directive)
 
 func init() {
-	wlocRe = regexp.MustCompile(`(?:window)?\.location\s*=\s*['"](.*?)['"]`)
+	wlocRe = regexp.MustCompile(`(?:window\.)?location\s*=\s*['"](.*?)['"]`)
 
 	cmd = flag.NewFlagSet(cmdName, flag.ContinueOnError)
 	cmd.BoolVar(&printOnly, "p", false, "print only: don't open URL in browser")

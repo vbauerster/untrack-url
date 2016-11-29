@@ -168,6 +168,10 @@ func TestExtractEpnRedirect(t *testing.T) {
 			"http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn",
 		},
 		{
+			"location = 'http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn'",
+			"http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn",
+		},
+		{
 			"\n\twindow.location='http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn';\n",
 			"http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn",
 		},
