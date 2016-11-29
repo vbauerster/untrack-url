@@ -134,11 +134,10 @@ func follow(url string) string {
 
 			// Special case for "epnclick.ru"
 			if loc.Host == "epnclick.ru" {
-				url, err := extractEpnRedirect(loc.String())
-				if err != nil {
-					log.Fatal(err)
+				if debug {
+					fmt.Printf("fetching: %q\n", loc.String())
 				}
-				return url
+				return extractEpnRedirect(loc.String())
 			}
 
 			if p, ok := redirectHosts[next.Host]; ok {
@@ -198,19 +197,21 @@ func removeAds(ref string) string {
 	return url.String()
 }
 
-func extractEpnRedirect(url string) (string, error) {
+// extracts 'windows.location' value from <script></script> element tag
+// in case of any err, empty string is returned.
+func extractEpnRedirect(url string) string {
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", err
+		return ""
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("getting %s: %s", url, resp.Status)
+		return ""
 	}
 	doc, err := html.Parse(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("parsing %s as HTML: %v", url, err)
+		return ""
 	}
 	for _, script := range visit(nil, doc) {
 		for _, line := range strings.Split(script, "\n") {
@@ -220,11 +221,11 @@ func extractEpnRedirect(url string) (string, error) {
 			}
 			groups := wlocRe.FindStringSubmatch(line)
 			if len(groups) > 1 {
-				return groups[1], nil
+				return groups[1]
 			}
 		}
 	}
-	return "", nil
+	return ""
 }
 
 func visit(scripts []string, n *html.Node) []string {
