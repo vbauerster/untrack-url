@@ -1,9 +1,11 @@
 package main
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -12,6 +14,25 @@ func setupTestServer(ref, param string) *httptest.Server {
 	mux := http.NewServeMux()
 	mux.Handle("/redirect", http.RedirectHandler("/ref?"+v.Encode(), 302))
 	mux.Handle("/ref", http.RedirectHandler(ref, 302))
+	return httptest.NewServer(mux)
+}
+
+func setupTestEpnServer(content string) *httptest.Server {
+	body := `<!DOCTYPE html>
+	<html>
+	<head>
+		<title>Redirecting...</title>
+			<meta charset="utf-8">
+			</head>
+			<body>
+					<script>content</script>
+			</body>
+	</html>`
+	mux := http.NewServeMux()
+	mux.Handle("/redirect", http.RedirectHandler("/ref", 302))
+	mux.HandleFunc("/ref", func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, strings.Replace(body, "content", content, -1))
+	})
 	return httptest.NewServer(mux)
 }
 
@@ -132,6 +153,37 @@ func TestParseURL(t *testing.T) {
 		u := parseURL(test.in)
 		if u.String() != test.want {
 			t.Errorf("Given: %s\nwant: %s\ngot: %s", test.in, test.want, u.String())
+		}
+	}
+}
+
+func TestExtractEpnRedirect(t *testing.T) {
+	debug = true
+	tests := []struct {
+		content string
+		want    string
+	}{
+		{
+			"window.location = 'http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn'",
+			"http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn",
+		},
+		{
+			"\n\twindow.location='http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn';\n",
+			"http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn",
+		},
+		{
+			`window.location="http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn";`,
+			"http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn",
+		},
+	}
+
+	for _, test := range tests {
+		ts := setupTestEpnServer(test.content)
+		defer ts.Close()
+
+		url := extractEpnRedirect(ts.URL + "/redirect")
+		if url != test.want {
+			t.Errorf("Expected loc: %q\nGot loc: %q\n", test.want, url)
 		}
 	}
 }
