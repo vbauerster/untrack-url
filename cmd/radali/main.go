@@ -7,9 +7,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
+
+	"golang.org/x/net/html"
 
 	"github.com/skratchdot/open-golang/open"
 )
@@ -27,7 +30,8 @@ var (
 	debug       bool
 	showVersion bool
 	// FlagSet
-	cmd *flag.FlagSet
+	cmd    *flag.FlagSet
+	wlocRe *regexp.Regexp
 )
 
 type directive struct {
@@ -46,6 +50,8 @@ var redirectHosts = map[string]string{
 var locations = make(map[string]directive)
 
 func init() {
+	wlocRe = regexp.MustCompile(`(?:window)?\.location\s*=\s*['"](.*?)['"]`)
+
 	cmd = flag.NewFlagSet(cmdName, flag.ContinueOnError)
 	cmd.BoolVar(&printOnly, "p", false, "print only: don't open URL in browser")
 	cmd.BoolVar(&debug, "d", false, "debug: print debug info")
@@ -126,6 +132,15 @@ func follow(url string) string {
 				log.Fatalf("unable to follow redirect: %v", err)
 			}
 
+			// Special case for "epnclick.ru"
+			if loc.Host == "epnclick.ru" {
+				url, err := extractEpnRedirect(loc.String())
+				if err != nil {
+					log.Fatal(err)
+				}
+				return url
+			}
+
 			if p, ok := redirectHosts[next.Host]; ok {
 				if _, ok = next.Query()[p]; ok {
 					if debug {
@@ -181,6 +196,46 @@ func removeAds(ref string) string {
 		}
 	}
 	return url.String()
+}
+
+func extractEpnRedirect(url string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("getting %s: %s", url, resp.Status)
+	}
+	doc, err := html.Parse(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("parsing %s as HTML: %v", url, err)
+	}
+	for _, script := range visit(nil, doc) {
+		for _, line := range strings.Split(script, "\n") {
+			line = strings.Trim(line, " \t")
+			if line == "" || strings.HasPrefix(line, "//") {
+				continue
+			}
+			groups := wlocRe.FindStringSubmatch(line)
+			if len(groups) > 1 {
+				return groups[1], nil
+			}
+		}
+	}
+	return "", nil
+}
+
+func visit(scripts []string, n *html.Node) []string {
+	if n.Type == html.ElementNode && n.Data == "script" {
+		scripts = append(scripts, n.FirstChild.Data)
+	}
+
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		scripts = visit(scripts, c)
+	}
+	return scripts
 }
 
 func parseURL(uri string) *url.URL {
