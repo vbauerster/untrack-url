@@ -233,7 +233,7 @@ func extractEpnRedirect(url string) string {
 }
 
 func visit(scripts []string, n *html.Node) []string {
-	if n.Type == html.ElementNode && n.Data == "script" {
+	if n.Type == html.ElementNode && n.Data == "script" && n.FirstChild != nil {
 		scripts = append(scripts, n.FirstChild.Data)
 	}
 

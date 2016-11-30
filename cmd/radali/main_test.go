@@ -179,6 +179,18 @@ func TestExtractEpnRedirect(t *testing.T) {
 			`window.location="http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn";`,
 			"http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn",
 		},
+		{
+			`//window.location="http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn";`,
+			"",
+		},
+		{
+			"var a = 'test'",
+			"",
+		},
+		{
+			"",
+			"",
+		},
 	}
 
 	for _, test := range tests {
