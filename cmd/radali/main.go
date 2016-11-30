@@ -46,6 +46,7 @@ var redirectHosts = map[string]string{
 	"ad.admitad.com":         "ulp",
 	"lenkmio.com":            "ulp",
 	"cashback.epn.bz":        "inviter",
+	"alibonus.com":           "u",
 }
 
 var locations = make(map[string]directive)
@@ -65,6 +66,7 @@ func init() {
 	locations["www.banggood.com"] = directive{NoQuery: true}
 	locations["letyshops.ru"] = directive{NoQuery: true, NoPath: true, Scheme: "https"}
 	locations["cashback.epn.bz"] = directive{NoQuery: true, NoPath: true}
+	locations["alibonus.com"] = directive{NoQuery: true, NoPath: true}
 
 	cmd.Usage = usage
 }
