@@ -7,7 +7,7 @@ I like online shopping, but I don't like others make money on me, while I'm onli
 Have you ever thought why advertisers give you short url like [this](https://goo.gl/yZqJ3p) one,
 and when you click it expands to a mile length url, bloated with ugly referral query params?
 Well, short answer because they make money like this, without your acknowledgment.
-But you can stop this, with the help of tiny cmd tool.
+But you can stop this, with the help of this cmd tool.
 
 **radali** will inspect where short url points to, and remove any referral query params,
 before opening target url in default web browser.
@@ -15,10 +15,12 @@ before opening target url in default web browser.
 At the moment following online markets are supported:
 
 * [aliexpress](https://ru.aliexpress.com)
-* [gearbest](http://www.gearbest.com)
+* [banggood](http://www.banggood.com)
+* [cashback.epn.bz](https://cashback.epn.bz)
 * [coolicool](http://www.coolicool.com)
-* [tinydeal](http://www.tinydeal.com)
+* [gearbest](http://www.gearbest.com)
 * [letyshops](https://letyshops.ru)
+* [tinydeal](http://www.tinydeal.com)
 
 ## Installation
 `radali` requires Go 1.7.1 or later.
