@@ -1,11 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 )
 
@@ -20,18 +20,18 @@ func setupTestServer(ref, param string) *httptest.Server {
 func setupTestEpnServer(content string) *httptest.Server {
 	body := `<!DOCTYPE html>
 	<html>
-	<head>
-		<title>Redirecting...</title>
+		<head>
+			<title>Redirecting...</title>
 			<meta charset="utf-8">
-			</head>
-			<body>
-					<script>content</script>
-			</body>
+		</head>
+		<body>
+			<script>%s</script>
+		</body>
 	</html>`
 	mux := http.NewServeMux()
 	mux.Handle("/redirect", http.RedirectHandler("/ref", 302))
 	mux.HandleFunc("/ref", func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, strings.Replace(body, "content", content, -1))
+		io.WriteString(w, fmt.Sprintf(body, content))
 	})
 	return httptest.NewServer(mux)
 }
