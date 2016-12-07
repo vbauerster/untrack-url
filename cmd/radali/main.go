@@ -100,13 +100,12 @@ func main() {
 		os.Exit(0)
 	}
 
-	args := cmd.Args()
-	if len(args) != 1 {
+	if cmd.NArg() != 1 {
 		cmd.Usage()
 		os.Exit(2)
 	}
 
-	target := removeAds(follow(args[0]))
+	target := removeAds(follow(cmd.Arg(0)))
 	if printOnly || debug {
 		fmt.Println(target)
 	} else {
