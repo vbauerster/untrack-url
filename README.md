@@ -1,6 +1,4 @@
-# radali
-
-[![Build Status](https://travis-ci.org/vbauerster/radali.svg?branch=master)](https://travis-ci.org/vbauerster/radali)
+# radali [![Build Status](https://travis-ci.org/vbauerster/radali.svg?branch=master)](https://travis-ci.org/vbauerster/radali)
 
 I like online shopping, but I don't like others make money on me, while I'm online shopping.
 
@@ -23,7 +21,7 @@ At the moment following online markets are supported:
 * [tinydeal](http://www.tinydeal.com)
 
 ## Installation
-`radali` requires Go 1.7.1 or later.
+`radali` requires Go 1.7 or later.
 ```
 $ go get -u github.com/vbauerster/radali
 ```
@@ -41,4 +39,4 @@ OPTIONS:
 
 ## License
 
-This program is under [WTFPL license](http://www.wtfpl.net)
+[BSD 3-Clause](https://opensource.org/licenses/BSD-3-Clause)
