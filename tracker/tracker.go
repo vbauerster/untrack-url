@@ -26,6 +26,15 @@ type directive struct {
 }
 
 var knownShops = map[string]directive{
+	"tmall.aliexpress.com": directive{
+		ParamsToDel: []string{
+			"aff_trace_key",
+			"terminal_id",
+			"initiative_id",
+			"cpt",
+			"spm",
+		},
+	},
 	"ru.aliexpress.com": directive{NoQuery: true},
 	"www.gearbest.com":  directive{NoQuery: true},
 	"www.coolicool.com": directive{NoQuery: true},
