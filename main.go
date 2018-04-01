@@ -18,7 +18,7 @@ import (
 	"strings"
 
 	"github.com/skratchdot/open-golang/open"
-	"github.com/vbauerster/radali/tracker"
+	"github.com/vbauerster/untrack-url/tracker"
 	"golang.org/x/net/html"
 )
 
