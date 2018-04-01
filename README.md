@@ -1,7 +1,16 @@
 # untrack-url [![Build Status](https://travis-ci.org/vbauerster/untrack-url.svg?branch=master)](https://travis-ci.org/vbauerster/untrack-url)
 
-**untrack-url** will inspect where short url points to, and remove any tracking query parameters,
-before opening target url in default web browser.
+**Why?**
+
+If you follow http://ali.ski/gkMqy and commit a purchase, somebody will earn some money on you.
+
+If you untrack the link with help of `untrack-url`, like:
+
+```
+$ untrack-url http://ali.ski/gkMqy
+```
+
+all tracking url params will be wiped out and **nobody** will earn money on you.
 
 ## Installation
 `untrack-url` requires Go 1.7 or later.
