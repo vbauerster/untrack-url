@@ -1,4 +1,4 @@
-// radali
+// untrack-url
 // Copyright (C) 2016-2017 Vladimir Bauer
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -6,6 +6,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -14,29 +15,25 @@ import (
 	"os"
 	"regexp"
 	"runtime"
-	"sort"
 	"strings"
 
-	"golang.org/x/net/html"
-
 	"github.com/skratchdot/open-golang/open"
+	"github.com/vbauerster/radali/tracker"
+	"golang.org/x/net/html"
 )
 
 const (
-	maxRedirects = 10
-	projectHome  = "https://github.com/vbauerster/radali"
-	cmdName      = "radali"
+	projectHome = "https://github.com/vbauerster/untrack-url"
+	cmdName     = "untrack-url"
 )
 
 var (
 	version = "devel"
 	// Command line flags.
 	printOnly   bool
-	debug       bool
 	showVersion bool
 	// FlagSet
-	cmd    *flag.FlagSet
-	wlocRe *regexp.Regexp
+	cmd *flag.FlagSet
 )
 
 type directive struct {
@@ -46,49 +43,27 @@ type directive struct {
 	Scheme      string
 }
 
-var redirectHosts = map[string]string{
-	"s.click.aliexpress.com": "dl_target_url",
-	"ad.admitad.com":         "ulp",
-	"lenkmio.com":            "ulp",
-	"cashback.epn.bz":        "inviter",
-	"alibonus.com":           "u",
-}
-
-var locations = make(map[string]directive)
-
 func init() {
-	wlocRe = regexp.MustCompile(`(?:window\.)?location\s*=\s*['"](.*?)['"]`)
+	registerTrackers()
 
 	cmd = flag.NewFlagSet(cmdName, flag.ContinueOnError)
 	cmd.BoolVar(&printOnly, "p", false, "print only: don't open URL in browser")
-	cmd.BoolVar(&debug, "d", false, "debug: print debug info")
 	cmd.BoolVar(&showVersion, "v", false, "print version number")
 
-	locations["ru.aliexpress.com"] = directive{NoQuery: true}
-	locations["www.gearbest.com"] = directive{NoQuery: true}
-	locations["www.coolicool.com"] = directive{NoQuery: true}
-	locations["www.tinydeal.com"] = directive{NoQuery: true}
-	locations["www.banggood.com"] = directive{NoQuery: true}
-	locations["letyshops.ru"] = directive{NoQuery: true, NoPath: true, Scheme: "https"}
-	locations["cashback.epn.bz"] = directive{NoQuery: true, NoPath: true}
-	locations["alibonus.com"] = directive{NoQuery: true, NoPath: true}
-
-	cmd.Usage = usage
-}
-
-func usage() {
-	fmt.Printf("Usage: %s [OPTIONS] URL\n\n", cmdName)
-	fmt.Println("OPTIONS:")
-	cmd.SetOutput(os.Stdout)
-	cmd.PrintDefaults()
-	fmt.Println()
-	fmt.Println("Supported resources:")
-	fmt.Println()
-	for _, loc := range supportedLocations() {
-		fmt.Printf("\t%s\n", loc)
+	cmd.Usage = func() {
+		fmt.Printf("Usage: %s [OPTIONS] URL\n\n", cmdName)
+		fmt.Println("OPTIONS:")
+		cmd.SetOutput(os.Stdout)
+		cmd.PrintDefaults()
+		fmt.Println()
+		fmt.Println("Known trackers:")
+		fmt.Println()
+		for _, loc := range tracker.KnownTrackers() {
+			fmt.Printf("\t%s\n", loc)
+		}
+		fmt.Println()
+		fmt.Printf("project home: %s\n", projectHome)
 	}
-	fmt.Println()
-	fmt.Printf("project home: %s\n", projectHome)
 }
 
 func main() {
@@ -101,7 +76,7 @@ func main() {
 	}
 
 	if showVersion {
-		fmt.Printf("%s %s (runtime: %s)\n", cmdName, version, runtime.Version())
+		fmt.Printf("%s: %s (runtime: %s)\n", cmdName, version, runtime.Version())
 		os.Exit(0)
 	}
 
@@ -110,116 +85,58 @@ func main() {
 		os.Exit(2)
 	}
 
-	target := removeAds(follow(cmd.Arg(0)))
-	if printOnly || debug {
-		fmt.Println(target)
-	} else {
-		open.Start(target)
+	cleanURL, err := tracker.Untrack(cmd.Arg(0))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if printOnly {
+		fmt.Println(cleanURL)
+	} else if err := open.Start(cleanURL); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 	}
 }
 
-func follow(url string) string {
-	// number of redirects followed
-	var redirectsFollowed int
-	client := &http.Client{
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-	next := parseURL(url)
-	for {
-		resp, err := client.Get(next.String())
-		if err != nil {
-			log.Fatalf("failed to read response: %v", err)
-		}
-		resp.Body.Close()
+// registerTrackers ...
+func registerTrackers() {
+	// https://regex101.com/r/kv1rVs/1
+	wlocRe := regexp.MustCompile(`(?:window|document)\.location\s*=\s*['"](.*?)['"]`)
 
-		if isRedirect(resp.StatusCode) {
-			loc, err := resp.Location()
-			if err != nil {
-				log.Fatalf("unable to follow redirect: %v", err)
-			}
-
-			// Special case for "epnclick.ru"
-			if loc.Host == "epnclick.ru" {
-				if debug {
-					fmt.Printf("fetching: %q\n", loc.String())
-				}
-				return extractEpnRedirect(loc.String())
-			}
-
-			if p, ok := redirectHosts[next.Host]; ok {
-				if _, ok = next.Query()[p]; ok {
-					if debug {
-						fmt.Printf("found ref: %q\n", loc)
-					}
-					return loc.String()
-				}
-			}
-
-			redirectsFollowed++
-			if redirectsFollowed > maxRedirects {
-				log.Fatalf("maximum number of redirects (%d) followed", maxRedirects)
-			}
-			next = loc
-		} else {
-			break
-		}
-	}
-	return ""
-}
-
-func removeAds(ref string) string {
-	if ref == "" {
-		fmt.Println("Nothing found!")
-		fmt.Println("Supported resources:")
-		fmt.Println()
-		for _, loc := range supportedLocations() {
-			fmt.Printf("\t%s\n", loc)
-		}
-		fmt.Println()
-		fmt.Printf("To add new resources, please submit issue at: %s\n", projectHome)
-		os.Exit(1)
-	}
-	url := parseURL(ref)
-	if dir, ok := locations[url.Host]; ok {
-		if debug {
-			fmt.Printf("%s = %+v\n", url.Host, dir)
-		}
-		if dir.NoQuery {
-			url.RawQuery = ""
-		} else if len(dir.ParamsToDel) != 0 {
-			v := url.Query()
-			for _, param := range dir.ParamsToDel {
-				v.Del(param)
-			}
-			url.RawQuery = v.Encode()
-		}
-		if dir.NoPath {
-			url.Path = ""
-		}
-		if dir.Scheme != "" {
-			url.Scheme = dir.Scheme
-		}
-	}
-	return url.String()
+	tracker.RegisterTracker("s.click.aliexpress.com", func(tracker *url.URL) (*url.URL, error) {
+		// http://ali.ski/gkMqy
+		return url.Parse(tracker.Query().Get("dl_target_url"))
+	})
+	tracker.RegisterTracker("ad.admitad.com", func(tracker *url.URL) (*url.URL, error) {
+		// http://fas.st/mKKaRE
+		return url.Parse(tracker.Query().Get("ulp"))
+	})
+	tracker.RegisterTracker("lenkmio.com", func(tracker *url.URL) (*url.URL, error) {
+		return url.Parse(tracker.Query().Get("ulp"))
+	})
+	tracker.RegisterTracker("epnclick.ru", func(tracker *url.URL) (*url.URL, error) {
+		// http://ali.pub/2c753s
+		return extractEpnRedirect(tracker.String(), wlocRe)
+	})
+	tracker.RegisterTracker("shopeasy.by", func(tracker *url.URL) (*url.URL, error) {
+		// http://ali.pub/2c76pq
+		return extractEpnRedirect(tracker.String(), wlocRe)
+	})
 }
 
 // extracts 'windows.location' value from <script></script> element tag
-// in case of any err, empty string is returned.
-func extractEpnRedirect(url string) string {
-	resp, err := http.Get(url)
+func extractEpnRedirect(rawurl string, wlocRe *regexp.Regexp) (*url.URL, error) {
+	resp, err := http.Get(rawurl)
 	if err != nil {
-		return ""
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return ""
+		return nil, errors.New("epn: status not ok")
 	}
 	doc, err := html.Parse(resp.Body)
 	if err != nil {
-		return ""
+		return nil, err
 	}
 	for _, script := range visit(nil, doc) {
 		for _, line := range strings.Split(script, "\n") {
@@ -229,11 +146,16 @@ func extractEpnRedirect(url string) string {
 			}
 			groups := wlocRe.FindStringSubmatch(line)
 			if len(groups) > 1 {
-				return groups[1]
+				fmt.Println(line)
+				fmt.Println(groups[1])
+				if targetURL, err := url.Parse(groups[1]); err == nil {
+					to := targetURL.Query().Get("to")
+					return url.Parse(to)
+				}
 			}
 		}
 	}
-	return ""
+	return url.Parse(rawurl)
 }
 
 func visit(scripts []string, n *html.Node) []string {
@@ -245,36 +167,4 @@ func visit(scripts []string, n *html.Node) []string {
 		scripts = visit(scripts, c)
 	}
 	return scripts
-}
-
-func parseURL(uri string) *url.URL {
-	if !strings.Contains(uri, "://") && !strings.HasPrefix(uri, "//") {
-		uri = "//" + uri
-	}
-
-	url, err := url.Parse(uri)
-	if err != nil {
-		log.Fatalf("could not parse url %q: %v", uri, err)
-	}
-
-	if url.Scheme == "" {
-		url.Scheme = "http"
-		if !strings.HasSuffix(url.Host, ":80") {
-			url.Scheme += "s"
-		}
-	}
-	return url
-}
-
-func supportedLocations() []string {
-	supported := make([]string, 0, len(locations))
-	for k := range locations {
-		supported = append(supported, k)
-	}
-	sort.Strings(supported)
-	return supported
-}
-
-func isRedirect(status int) bool {
-	return status > 299 && status < 400
 }
