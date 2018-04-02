@@ -18,31 +18,35 @@ type ExtractTarget func(tracker *url.URL) (*url.URL, error)
 
 var trackers = make(map[string]ExtractTarget)
 
-type directive struct {
-	ParamsToDel []string
-	NoQuery     bool
-	NoPath      bool
-	Scheme      string
+type CleanUpRule struct {
+	Params       []string
+	InvertParams bool
+	EmptyParams  bool
+	EmptyPath    bool
+	Scheme       string
 }
 
-var knownShops = map[string]directive{
-	"tmall.aliexpress.com": directive{
-		ParamsToDel: []string{
-			"aff_trace_key",
-			"terminal_id",
-			"initiative_id",
-			"cpt",
-			"spm",
-		},
+var knownShops = map[string]CleanUpRule{
+	"tmall.aliexpress.com": CleanUpRule{
+		Params:       []string{"SearchText"},
+		InvertParams: true,
 	},
-	"ru.aliexpress.com": directive{NoQuery: true},
-	"www.gearbest.com":  directive{NoQuery: true},
-	"www.coolicool.com": directive{NoQuery: true},
-	"www.tinydeal.com":  directive{NoQuery: true},
-	"www.banggood.com":  directive{NoQuery: true},
-	"letyshops.ru":      directive{NoQuery: true, NoPath: true, Scheme: "https"},
-	"cashback.epn.bz":   directive{NoQuery: true, NoPath: true},
-	"alibonus.com":      directive{NoQuery: true, NoPath: true},
+	"ru.aliexpress.com": CleanUpRule{
+		Params:       []string{"SearchText"},
+		InvertParams: true,
+	},
+	"www.gearbest.com": CleanUpRule{
+		EmptyParams: true,
+	},
+	"www.coolicool.com": CleanUpRule{
+		EmptyParams: true,
+	},
+	"www.tinydeal.com": CleanUpRule{
+		EmptyParams: true,
+	},
+	"www.banggood.com": CleanUpRule{
+		EmptyParams: true,
+	},
 }
 
 // RegisterTracker ...
@@ -103,22 +107,32 @@ func Untrack(rawurl string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if dir, ok := knownShops[targetURL.Host]; ok {
-		// fmt.Printf("%s = %+v\n", targetURL.Host, dir)
-		if dir.NoQuery {
+	if rule, ok := knownShops[targetURL.Host]; ok {
+		// fmt.Printf("%s = %+values\n", targetURL.Host, rule)
+		if rule.EmptyParams {
 			targetURL.RawQuery = ""
-		} else if len(dir.ParamsToDel) != 0 {
-			v := targetURL.Query()
-			for _, param := range dir.ParamsToDel {
-				v.Del(param)
+		} else if len(rule.Params) != 0 {
+			values := targetURL.Query()
+			toDelKeys := make(map[string]bool, len(values))
+			for k := range values {
+				toDelKeys[k] = rule.InvertParams
 			}
-			targetURL.RawQuery = v.Encode()
+			for _, k := range rule.Params {
+				toDelKeys[k] = !rule.InvertParams
+			}
+			for k, toDel := range toDelKeys {
+				if toDel {
+					values.Del(k)
+				}
+			}
+			targetURL.RawQuery = values.Encode()
 		}
-		if dir.NoPath {
+
+		if rule.EmptyPath {
 			targetURL.Path = ""
 		}
-		if dir.Scheme != "" {
-			targetURL.Scheme = dir.Scheme
+		if rule.Scheme != "" {
+			targetURL.Scheme = rule.Scheme
 		}
 	}
 	return targetURL.String(), nil

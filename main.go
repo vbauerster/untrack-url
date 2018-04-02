@@ -36,13 +36,6 @@ var (
 	cmd *flag.FlagSet
 )
 
-type directive struct {
-	ParamsToDel []string
-	NoQuery     bool
-	NoPath      bool
-	Scheme      string
-}
-
 func init() {
 	registerTrackers()
 
@@ -146,8 +139,7 @@ func extractEpnRedirect(rawurl string, wlocRe *regexp.Regexp) (*url.URL, error) 
 			}
 			groups := wlocRe.FindStringSubmatch(line)
 			if len(groups) > 1 {
-				fmt.Println(line)
-				fmt.Println(groups[1])
+				// fmt.Println(groups[1])
 				if targetURL, err := url.Parse(groups[1]); err == nil {
 					to := targetURL.Query().Get("to")
 					return url.Parse(to)
