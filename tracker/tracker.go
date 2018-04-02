@@ -23,10 +23,10 @@ type CleanUpRule struct {
 	InvertParams bool
 	EmptyParams  bool
 	EmptyPath    bool
-	Scheme       string
 }
 
 var knownShops = map[string]CleanUpRule{
+	// http://ali.pub/2c76pq
 	"tmall.aliexpress.com": CleanUpRule{
 		Params:       []string{"SearchText"},
 		InvertParams: true,
@@ -45,6 +45,30 @@ var knownShops = map[string]CleanUpRule{
 		EmptyParams: true,
 	},
 	"www.banggood.com": CleanUpRule{
+		EmptyParams: true,
+	},
+	// not exactly shop: http://ali.pub/28863g
+	"epn.bz": CleanUpRule{
+		EmptyParams: true,
+	},
+	// not exactrly shop: http://ali.pub/1sn27h
+	"ali.epn.bz": CleanUpRule{
+		EmptyParams: true,
+	},
+	// not exactrly shop
+	"cashback.epn.bz": CleanUpRule{
+		EmptyParams: true,
+	},
+	// not exactrly shop: http://goo.gl/4jTrj4
+	"alibonus.com": CleanUpRule{
+		EmptyParams: true,
+	},
+	// not exactrly shop
+	"letyshops.ru": CleanUpRule{
+		EmptyParams: true,
+	},
+	// not exactrly shop: https://goo.gl/swMH8e
+	"letyshops.com": CleanUpRule{
 		EmptyParams: true,
 	},
 }
@@ -130,9 +154,6 @@ func Untrack(rawurl string) (string, error) {
 
 		if rule.EmptyPath {
 			targetURL.Path = ""
-		}
-		if rule.Scheme != "" {
-			targetURL.Scheme = rule.Scheme
 		}
 	}
 	return targetURL.String(), nil

@@ -142,7 +142,10 @@ func extractEpnRedirect(rawurl string, wlocRe *regexp.Regexp) (*url.URL, error) 
 				// fmt.Println(groups[1])
 				if targetURL, err := url.Parse(groups[1]); err == nil {
 					to := targetURL.Query().Get("to")
-					return url.Parse(to)
+					if to != "" {
+						return url.Parse(to)
+					}
+					return targetURL, err
 				}
 			}
 		}
