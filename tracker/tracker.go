@@ -1,6 +1,7 @@
 package tracker
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -13,6 +14,7 @@ const (
 )
 
 var ErrMaxRedirect = fmt.Errorf("tracker: max redirects (%d) followed", maxRedirects)
+var ErrNoRedirectTracker = errors.New("tracker: no redirect")
 
 type ExtractTarget func(tracker *url.URL) (*url.URL, error)
 
@@ -94,7 +96,11 @@ func follow(rawurl string) (*url.URL, error) {
 	}
 	for {
 		if f, ok := trackers[trackURL.Host]; ok {
-			return f(trackURL)
+			if target, err := f(trackURL); err == nil {
+				return target, err
+			} else if err == ErrNoRedirectTracker {
+				trackURL = target
+			}
 		}
 		resp, err := client.Get(trackURL.String())
 		if err != nil {
