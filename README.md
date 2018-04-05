@@ -30,6 +30,7 @@ OPTIONS:
 Known trackers:
 
         ad.admitad.com
+        alitems.com
         epnclick.ru
         lenkmio.com
         s.click.aliexpress.com
