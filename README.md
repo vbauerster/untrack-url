@@ -23,6 +23,7 @@ $ go get -u github.com/vbauerster/untrack-url
 Usage: untrack-url [OPTIONS] URL
 
 OPTIONS:
+  -d    debug: print debug info, implies -p
   -p    print only: don't open URL in browser
   -v    print version number
 
@@ -33,6 +34,7 @@ Known trackers:
         lenkmio.com
         s.click.aliexpress.com
         shopeasy.by
+        www.youtube.com
 ```
 
 ## License
