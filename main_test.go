@@ -7,199 +7,118 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/vbauerster/untrack-url/tracker"
 )
 
-func setupTestServer(ref, param string) *httptest.Server {
-	v := url.Values{param: {ref}}
+func setupRedirectServer(source, destination string) *httptest.Server {
 	mux := http.NewServeMux()
-	mux.Handle("/redirect", http.RedirectHandler("/ref?"+v.Encode(), 302))
-	mux.Handle("/ref", http.RedirectHandler(ref, 302))
+	mux.Handle(source, http.RedirectHandler(destination, 302))
 	return httptest.NewServer(mux)
 }
 
-func setupTestEpnServer(content string) *httptest.Server {
-	body := `<!DOCTYPE html>
-	<html>
-		<head>
-			<title>Redirecting...</title>
-			<meta charset="utf-8">
-		</head>
-		<body>
-			<script>%s</script>
-		</body>
-	</html>`
+func setupTestServer(path string, handler func(w http.ResponseWriter, r *http.Request)) *httptest.Server {
 	mux := http.NewServeMux()
-	mux.Handle("/redirect", http.RedirectHandler("/ref", 302))
-	mux.HandleFunc("/ref", func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, fmt.Sprintf(body, content))
-	})
+	mux.HandleFunc(path, handler)
 	return httptest.NewServer(mux)
 }
 
-func TestFollow(t *testing.T) {
-	params := make([]string, 0, len(redirectHosts))
-	for _, v := range redirectHosts {
-		params = append(params, v)
+type testCase struct {
+	trackerHost string
+	targetKey   string
+	dirtyTarget string
+	cleanTarget string
+	script      string
+	handleMaker func(string) func(http.ResponseWriter, *http.Request)
+}
+
+func TestUntrack(t *testing.T) {
+
+	troubleMaker := func(string) func(http.ResponseWriter, *http.Request) {
+		return func(http.ResponseWriter, *http.Request) {
+			t.Fail()
+		}
 	}
 
-	dummyRef := "http://dummy.org"
-	for _, param := range params {
-		ts := setupTestServer(dummyRef, param)
-		defer ts.Close()
-
-		tsURL, err := url.Parse(ts.URL)
-		if err != nil {
-			t.Fatal(err)
+	makeScriptHandler := func(script string) func(http.ResponseWriter, *http.Request) {
+		return func(w http.ResponseWriter, _ *http.Request) {
+			body := `<!DOCTYPE html>
+						<html>
+							<head>
+								<title>Redirecting...</title>
+								<meta charset="utf-8">
+							</head>
+							<body>
+								<script>%s</script>
+							</body>
+						</html>`
+			io.WriteString(w, fmt.Sprintf(body, script))
 		}
+	}
 
-		redirectHosts[tsURL.Host] = param
+	cases := map[string]testCase{
+		"targetKey: dl_target_url": {
+			trackerHost: "s.click.aliexpress.com",
+			targetKey:   "dl_target_url",
+			dirtyTarget: "https://ru.aliexpress.com/store?a=A&SearchText=phone&b=B&c=C",
+			cleanTarget: "https://ru.aliexpress.com/store?SearchText=phone",
+			handleMaker: troubleMaker,
+		},
+		"targetKey: ulp": {
+			trackerHost: "ad.admitad.com",
+			targetKey:   "ulp",
+			dirtyTarget: "https://ru.aliexpress.com/store?a=A&SearchText=phone&b=B&c=C",
+			cleanTarget: "https://ru.aliexpress.com/store?SearchText=phone",
+			handleMaker: troubleMaker,
+		},
+		"epn": {
+			trackerHost: "epnclick.ru",
+			cleanTarget: "http://www.gearbest.com/cell-phones/pp_470619.html",
+			script:      "window.location = 'http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn';",
+			handleMaker: makeScriptHandler,
+		},
+		"enp with to": {
+			trackerHost: "shopeasy.by",
+			cleanTarget: "https://tmall.aliexpress.com/w/wholesale-multicooker.html?SearchText=multicooker",
+			script:      "document.location='/redirect/cpa/o/p5brt6my0anysg50o8syzaw1yyu1mhxv/?to=https%3A%2F%2Ftmall.aliexpress.com%2Fw%2Fwholesale-multicooker.html%3Fspm%3Da2g02.9334986.kitchen-appliances.8.21154eaexojb3q%26site%3Drus%26SearchText%3Dmulticooker%26needQuery%3Dn%26initiative_id%3DSB_20171210225006%26isCompetitiveProducts%3Dy%26g%3Dy';",
+			handleMaker: makeScriptHandler,
+		},
+	}
 
-		if ref := follow(ts.URL + "/redirect"); ref != dummyRef {
-			t.Errorf("\nExpected ref: %q\nGot ref: %q\n", dummyRef, ref)
-		}
+	// tracker.Debug = true
+	registerTrackers()
+	for name, tc := range cases {
+		setupAndTest(t, name, tc)
 	}
 }
 
-func TestRemoveAds(t *testing.T) {
-	ali := "https://ru.aliexpress.com/store/product/Original-Xiaomi-Mi5s-Mi-5S-3GB-RAM-64GB-ROM-Mobile-Phone-Snapdragon-821-5-15-1920x1080/311331_32740701280.html?aff_platform=aaf&sk=VnYZvQVf%3A&cpt=1479995730630&dp=bc1f2bd78b3dbf51260453f6b915ce98&af=288795&cv=47843&afref=&aff_trace_key=e8364f22d3e546fcafe1cf5b61b9519a-1479995730630-04043-VnYZvQVf"
-	gear := "http://www.gearbest.com/cell-phones/pp_471491.html?wid=21&admitad_uid=75984b1e4bfdbbda9d4238493f856147"
-	cool := "http://www.coolicool.com/xiaomi-mi-5s-ultrasonic-fingerprint-3gb-ram-32gb-rom-qualcomm-snapdragon-821-215ghz-quad-core-515-g-44250?utm_source=admitad&utm_medium=referral&admitad_uid=953908711f4f569b3e8acdf0f3ef7ba6"
-	tiny := "http://www.tinydeal.com/xiaomi-mi-5s-515-fhd-snapdragon-821-quad-core-android-60-4g-phone-px369k7-p-162019.html?admitad_uid=42926493e6f007492b134a881528cd45&utm_source=admitad&utm_medium=referral&utm_campaign=admitad"
-	lety := "http://letyshops.ru/Andronews?admitad_uid=ccdfdeb8f26902ba663c79463dbec762&publisher_id=251289"
-
-	var tests = []struct {
-		in  string
-		out string
-	}{
-		{
-			ali,
-			"https://ru.aliexpress.com/store/product/Original-Xiaomi-Mi5s-Mi-5S-3GB-RAM-64GB-ROM-Mobile-Phone-Snapdragon-821-5-15-1920x1080/311331_32740701280.html",
-		},
-		{
-			gear,
-			"http://www.gearbest.com/cell-phones/pp_471491.html",
-		},
-		{
-			cool,
-			"http://www.coolicool.com/xiaomi-mi-5s-ultrasonic-fingerprint-3gb-ram-32gb-rom-qualcomm-snapdragon-821-215ghz-quad-core-515-g-44250",
-		},
-		{
-			tiny,
-			"http://www.tinydeal.com/xiaomi-mi-5s-515-fhd-snapdragon-821-quad-core-android-60-4g-phone-px369k7-p-162019.html",
-		},
-		{
-			lety,
-			"https://letyshops.ru",
-		},
+// setupAndTest ...
+func setupAndTest(t *testing.T, name string, tc testCase) {
+	ts := setupTestServer("/", tc.handleMaker(tc.script))
+	defer ts.Close()
+	tsURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fail()
 	}
+	if tc.targetKey != "" {
+		v := url.Values{}
+		v.Set(tc.targetKey, tc.dirtyTarget)
+		tsURL.RawQuery = v.Encode()
+	}
+	rs := setupRedirectServer("/", tsURL.String())
+	defer rs.Close()
 
-	for _, test := range tests {
-		if got := removeAds(test.in); got != test.out {
-			t.Errorf("\nExpected: %q\nGot: %q\n", test.out, got)
+	fn := tracker.RegisterTracker(tc.trackerHost, nil)
+	if fn == nil {
+		t.Fail()
+	}
+	tracker.RegisterTracker(tsURL.Host, fn)
+
+	if target, err := tracker.Untrack(rs.URL); err == nil {
+		if target != tc.cleanTarget {
+			t.Errorf("%s: expected: %q, got: %q\n", name, tc.cleanTarget, target)
 		}
-	}
-}
-
-func TestRemoveAdsArbitraryParam(t *testing.T) {
-	var tests = []struct {
-		in  string
-		dir directive
-	}{
-		{
-			"https://example.org/test?spy_ad=toberemoved",
-			directive{ParamsToDel: []string{"spy_ad"}},
-		},
-		{
-			"https://example.org/test?spy_ad=toberemoved&wid=foo",
-			directive{ParamsToDel: []string{"wid"}},
-		},
-	}
-	for _, test := range tests {
-		url, err := url.Parse(test.in)
-		if err != nil {
-			t.Fatal(err)
-		}
-		locations[url.Host] = test.dir
-		got := removeAds(test.in)
-		if len(test.dir.ParamsToDel) != 0 {
-			url, err := url.Parse(got)
-			if err != nil {
-				t.Fatal(err)
-			}
-			v := url.Query()
-			for _, p := range test.dir.ParamsToDel {
-				if _, ok := v[p]; ok {
-					t.Errorf("param %q wasn't removed\n", p)
-				}
-			}
-		}
-	}
-}
-
-func TestParseURL(t *testing.T) {
-	tests := []struct {
-		in   string
-		want string
-	}{
-		{"https://golang.org", "https://golang.org"},
-		{"https://golang.org:443/test", "https://golang.org:443/test"},
-		{"localhost:8080/test", "https://localhost:8080/test"},
-		{"localhost:80/test", "http://localhost:80/test"},
-		{"//localhost:8080/test", "https://localhost:8080/test"},
-		{"//localhost:80/test", "http://localhost:80/test"},
-	}
-
-	for _, test := range tests {
-		u := parseURL(test.in)
-		if u.String() != test.want {
-			t.Errorf("Given: %s\nwant: %s\ngot: %s", test.in, test.want, u.String())
-		}
-	}
-}
-
-func TestExtractEpnRedirect(t *testing.T) {
-	debug = true
-	tests := []struct {
-		content string
-		want    string
-	}{
-		{
-			"window.location = 'http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn'",
-			"http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn",
-		},
-		{
-			"location = 'http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn'",
-			"http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn",
-		},
-		{
-			"\n\twindow.location='http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn';\n",
-			"http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn",
-		},
-		{
-			`window.location="http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn";`,
-			"http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn",
-		},
-		{
-			`//window.location="http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn";`,
-			"",
-		},
-		{
-			"var a = 'test'",
-			"",
-		},
-		{
-			"",
-			"",
-		},
-	}
-
-	for _, test := range tests {
-		ts := setupTestEpnServer(test.content)
-		defer ts.Close()
-
-		url := extractEpnRedirect(ts.URL + "/redirect")
-		if url != test.want {
-			t.Errorf("Expected loc: %q\nGot loc: %q\n", test.want, url)
-		}
+	} else {
+		t.Fail()
 	}
 }

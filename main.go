@@ -98,17 +98,20 @@ func registerTrackers() {
 	// https://regex101.com/r/kv1rVs/1
 	wlocRe := regexp.MustCompile(`(?:window|document)\.location\s*=\s*['"](.*?)['"]`)
 
+	ulp := func(trackURL *url.URL) (*url.URL, error) {
+		return url.Parse(trackURL.Query().Get("ulp"))
+	}
+
+	//  http://ali.pub/ahgiu
 	tracker.RegisterTracker("s.click.aliexpress.com", func(trackURL *url.URL) (*url.URL, error) {
-		// http://ali.ski/gkMqy
 		return url.Parse(trackURL.Query().Get("dl_target_url"))
 	})
-	tracker.RegisterTracker("ad.admitad.com", func(trackURL *url.URL) (*url.URL, error) {
-		// http://fas.st/mKKaRE
-		return url.Parse(trackURL.Query().Get("ulp"))
-	})
-	tracker.RegisterTracker("lenkmio.com", func(trackURL *url.URL) (*url.URL, error) {
-		return url.Parse(trackURL.Query().Get("ulp"))
-	})
+	// http://fas.st/mKKaRE
+	tracker.RegisterTracker("ad.admitad.com", ulp)
+	tracker.RegisterTracker("lenkmio.com", ulp)
+	// http://ali.ski/gkMqy
+	tracker.RegisterTracker("alitems.com", ulp)
+
 	tracker.RegisterTracker("www.youtube.com", func(trackURL *url.URL) (*url.URL, error) {
 		targetURL, err := url.Parse(trackURL.Query().Get("q"))
 		if err != nil {
@@ -116,15 +119,15 @@ func registerTrackers() {
 		}
 		return targetURL, tracker.ErrNoRedirectTracker
 	})
-	tracker.RegisterTracker("epnclick.ru", func(trackURL *url.URL) (*url.URL, error) {
-		// http://ali.pub/2c753s
-		// https://goo.gl/VLb3Xd
+
+	epn := func(trackURL *url.URL) (*url.URL, error) {
 		return extractEpnRedirect(trackURL.String(), wlocRe)
-	})
-	tracker.RegisterTracker("shopeasy.by", func(trackURL *url.URL) (*url.URL, error) {
-		// http://ali.pub/2c76pq
-		return extractEpnRedirect(trackURL.String(), wlocRe)
-	})
+	}
+	// http://ali.pub/2c753s
+	// https://goo.gl/VLb3Xd
+	tracker.RegisterTracker("epnclick.ru", epn)
+	// http://ali.pub/2c76pq
+	tracker.RegisterTracker("shopeasy.by", epn)
 }
 
 // extracts 'windows.location' value from <script></script> element tag
