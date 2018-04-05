@@ -43,15 +43,15 @@ func TestUntrack(t *testing.T) {
 	makeScriptHandler := func(script string) func(http.ResponseWriter, *http.Request) {
 		return func(w http.ResponseWriter, _ *http.Request) {
 			body := `<!DOCTYPE html>
-						<html>
-							<head>
-								<title>Redirecting...</title>
-								<meta charset="utf-8">
-							</head>
-							<body>
-								<script>%s</script>
-							</body>
-						</html>`
+					<html>
+						<head>
+							<title>Redirecting...</title>
+							<meta charset="utf-8">
+						</head>
+						<body>
+							<script>%s</script>
+						</body>
+					</html>`
 			io.WriteString(w, fmt.Sprintf(body, script))
 		}
 	}
