@@ -31,16 +31,16 @@ var (
 	version = "devel"
 	// Command line flags.
 	printOnly   bool
+	debug       bool
 	showVersion bool
 	// FlagSet
 	cmd *flag.FlagSet
 )
 
 func init() {
-	registerTrackers()
-
 	cmd = flag.NewFlagSet(cmdName, flag.ContinueOnError)
 	cmd.BoolVar(&printOnly, "p", false, "print only: don't open URL in browser")
+	cmd.BoolVar(&debug, "d", false, "debug: print debug info, implies -p")
 	cmd.BoolVar(&showVersion, "v", false, "print version number")
 
 	cmd.Usage = func() {
@@ -57,6 +57,8 @@ func init() {
 		fmt.Println()
 		fmt.Printf("project home: %s\n", projectHome)
 	}
+
+	registerTrackers()
 }
 
 func main() {
@@ -78,12 +80,13 @@ func main() {
 		os.Exit(2)
 	}
 
+	tracker.Debug = debug
 	cleanURL, err := tracker.Untrack(cmd.Arg(0))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if printOnly {
+	if printOnly || debug {
 		fmt.Println(cleanURL)
 	} else if err := open.Start(cleanURL); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -115,6 +118,7 @@ func registerTrackers() {
 	})
 	tracker.RegisterTracker("epnclick.ru", func(trackURL *url.URL) (*url.URL, error) {
 		// http://ali.pub/2c753s
+		// https://goo.gl/VLb3Xd
 		return extractEpnRedirect(trackURL.String(), wlocRe)
 	})
 	tracker.RegisterTracker("shopeasy.by", func(trackURL *url.URL) (*url.URL, error) {
@@ -146,7 +150,6 @@ func extractEpnRedirect(rawurl string, wlocRe *regexp.Regexp) (*url.URL, error) 
 			}
 			groups := wlocRe.FindStringSubmatch(line)
 			if len(groups) > 1 {
-				// fmt.Println(groups[1])
 				if targetURL, err := url.Parse(groups[1]); err == nil {
 					to := targetURL.Query().Get("to")
 					if to != "" {

@@ -16,6 +16,8 @@ const (
 var ErrMaxRedirect = fmt.Errorf("tracker: max redirects (%d) followed", maxRedirects)
 var ErrNoRedirectTracker = errors.New("tracker: no redirect")
 
+var Debug bool
+
 type ExtractTarget func(tracker *url.URL) (*url.URL, error)
 
 var trackers = make(map[string]ExtractTarget)
@@ -96,6 +98,9 @@ func follow(rawurl string) (*url.URL, error) {
 	}
 	for {
 		if f, ok := trackers[trackURL.Host]; ok {
+			if Debug {
+				fmt.Printf("Intercepted tracker: %q\n", trackURL.Host)
+			}
 			if target, err := f(trackURL); err == nil {
 				return target, err
 			} else if err == ErrNoRedirectTracker {
@@ -114,9 +119,11 @@ func follow(rawurl string) (*url.URL, error) {
 				return nil, err
 			}
 
-			// fmt.Println("get:", trackURL)
-			// fmt.Println("loc:", loc)
-			// fmt.Println()
+			if Debug {
+				fmt.Println("get:", trackURL)
+				fmt.Println("loc:", loc)
+				fmt.Println()
+			}
 
 			redirectsFollowed++
 			if redirectsFollowed > maxRedirects {
@@ -138,7 +145,9 @@ func Untrack(rawurl string) (string, error) {
 		return "", err
 	}
 	if rule, ok := knownShops[targetURL.Host]; ok {
-		// fmt.Printf("%s = %+values\n", targetURL.Host, rule)
+		if Debug {
+			fmt.Printf("applying rule %+v to %q\n", rule, targetURL.String())
+		}
 		if rule.EmptyParams {
 			targetURL.RawQuery = ""
 		} else if len(rule.Params) != 0 {
@@ -161,6 +170,8 @@ func Untrack(rawurl string) (string, error) {
 		if rule.EmptyPath {
 			targetURL.Path = ""
 		}
+	} else if Debug {
+		fmt.Printf("host: %q not found in knownShops\n", targetURL.Host)
 	}
 	return targetURL.String(), nil
 }
