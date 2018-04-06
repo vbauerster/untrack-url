@@ -51,6 +51,10 @@ var knownShops = map[string]CleanUpRule{
 	"www.banggood.com": CleanUpRule{
 		EmptyParams: true,
 	},
+	"multivarka.pro": CleanUpRule{
+		Params:       []string{"q"},
+		InvertParams: true,
+	},
 	// not exactly shop: http://ali.pub/28863g
 	"epn.bz": CleanUpRule{
 		EmptyParams: true,
