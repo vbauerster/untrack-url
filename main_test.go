@@ -71,6 +71,13 @@ func TestUntrack(t *testing.T) {
 			cleanTarget: "https://ru.aliexpress.com/store?SearchText=phone",
 			handleMaker: troubleMaker,
 		},
+		"targetKey: q": {
+			trackerHost: "www.youtube.com",
+			targetKey:   "q",
+			dirtyTarget: "https://ad.admitad.com?ulp=https%3A%2F%2Fru.aliexpress.com%2Fstore%3Fa%3DA%26SearchText%3Dphone%26b%3DB%26c%3DC",
+			cleanTarget: "https://ru.aliexpress.com/store?SearchText=phone",
+			handleMaker: troubleMaker,
+		},
 		"epn": {
 			trackerHost: "epnclick.ru",
 			cleanTarget: "http://www.gearbest.com/cell-phones/pp_470619.html",
@@ -113,6 +120,7 @@ func setupAndTest(t *testing.T, name string, tc testCase) {
 		t.Fail()
 	}
 	tracker.RegisterTracker(tsURL.Host, fn)
+	tracker.RegisterTracker(tc.trackerHost, fn)
 
 	if target, err := tracker.Untrack(rs.URL); err == nil {
 		if target != tc.cleanTarget {

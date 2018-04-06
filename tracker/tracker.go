@@ -1,7 +1,6 @@
 package tracker
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -13,10 +12,9 @@ const (
 	maxRedirects = 10
 )
 
-var ErrMaxRedirect = fmt.Errorf("tracker: max redirects (%d) followed", maxRedirects)
-var ErrNoRedirectTracker = errors.New("tracker: no redirect")
-
 var Debug bool
+
+var ErrMaxRedirect = fmt.Errorf("tracker: max redirects (%d) followed", maxRedirects)
 
 type ExtractTarget func(tracker *url.URL) (*url.URL, error)
 
@@ -100,15 +98,13 @@ func follow(rawurl string) (*url.URL, error) {
 			return http.ErrUseLastResponse
 		},
 	}
+
 	for {
-		if f, ok := trackers[trackURL.Host]; ok {
-			if Debug {
-				fmt.Printf("Intercepted tracker: %q\n", trackURL.Host)
-			}
-			if target, err := f(trackURL); err == nil {
-				return target, err
-			} else if err == ErrNoRedirectTracker {
-				trackURL = target
+		if targetURL, err := checkNestedTrackers(trackURL, nil); err == nil {
+			if _, ok := knownShops[targetURL.Host]; ok {
+				return targetURL, err
+			} else {
+				trackURL = targetURL
 			}
 		}
 		resp, err := client.Get(trackURL.String())
@@ -138,6 +134,17 @@ func follow(rawurl string) (*url.URL, error) {
 			return trackURL, nil
 		}
 	}
+}
+
+func checkNestedTrackers(trackURL *url.URL, err error) (*url.URL, error) {
+	fn, ok := trackers[trackURL.Host]
+	if !ok {
+		return trackURL, err
+	}
+	if Debug {
+		fmt.Printf("Intercepted tracker: %q\n", trackURL.Host)
+	}
+	return checkNestedTrackers(fn(trackURL))
 }
 
 func Untrack(rawurl string) (string, error) {

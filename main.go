@@ -98,27 +98,21 @@ func registerTrackers() {
 	// https://regex101.com/r/kv1rVs/1
 	wlocRe := regexp.MustCompile(`(?:window|document)\.location\s*=\s*['"](.*?)['"]`)
 
-	ulp := func(trackURL *url.URL) (*url.URL, error) {
-		return url.Parse(trackURL.Query().Get("ulp"))
+	paramExtractor := func(pkey string) tracker.ExtractTarget {
+		return func(trackURL *url.URL) (*url.URL, error) {
+			return url.Parse(trackURL.Query().Get(pkey))
+		}
 	}
 
 	//  http://ali.pub/ahgiu
-	tracker.RegisterTracker("s.click.aliexpress.com", func(trackURL *url.URL) (*url.URL, error) {
-		return url.Parse(trackURL.Query().Get("dl_target_url"))
-	})
+	tracker.RegisterTracker("s.click.aliexpress.com", paramExtractor("dl_target_url"))
 	// http://fas.st/mKKaRE
-	tracker.RegisterTracker("ad.admitad.com", ulp)
-	tracker.RegisterTracker("lenkmio.com", ulp)
+	tracker.RegisterTracker("ad.admitad.com", paramExtractor("ulp"))
+	tracker.RegisterTracker("lenkmio.com", paramExtractor("ulp"))
 	// http://ali.ski/gkMqy
-	tracker.RegisterTracker("alitems.com", ulp)
+	tracker.RegisterTracker("alitems.com", paramExtractor("ulp"))
 
-	tracker.RegisterTracker("www.youtube.com", func(trackURL *url.URL) (*url.URL, error) {
-		targetURL, err := url.Parse(trackURL.Query().Get("q"))
-		if err != nil {
-			return trackURL, err
-		}
-		return targetURL, tracker.ErrNoRedirectTracker
-	})
+	tracker.RegisterTracker("www.youtube.com", paramExtractor("q"))
 
 	epn := func(trackURL *url.URL) (*url.URL, error) {
 		return extractEpnRedirect(trackURL.String(), wlocRe)
