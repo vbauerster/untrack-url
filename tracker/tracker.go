@@ -16,7 +16,7 @@ var Debug bool
 
 var ErrMaxRedirect = fmt.Errorf("tracker: max redirects (%d) followed", maxRedirects)
 
-type ExtractTarget func(tracker *url.URL) (*url.URL, error)
+type ExtractTarget func(*url.URL) (*url.URL, error)
 
 var trackers = make(map[string]ExtractTarget)
 
