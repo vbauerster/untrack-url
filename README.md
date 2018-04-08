@@ -36,6 +36,22 @@ Known trackers:
         s.click.aliexpress.com
         shopeasy.by
         www.youtube.com
+
+Known shops:
+
+        ali.epn.bz
+        alibonus.com
+        cashback.epn.bz
+        epn.bz
+        letyshops.com
+        letyshops.ru
+        multivarka.pro
+        ru.aliexpress.com
+        tmall.aliexpress.com
+        www.banggood.com
+        www.coolicool.com
+        www.gearbest.com
+        www.tinydeal.com
 ```
 
 ## License
