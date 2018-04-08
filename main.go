@@ -6,20 +6,14 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
-	"log"
-	"net/http"
-	"net/url"
 	"os"
-	"regexp"
 	"runtime"
-	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
-	"github.com/vbauerster/untrack-url/tracker"
-	"golang.org/x/net/html"
+	"github.com/vbauerster/untrack-url/ranger"
 )
 
 const (
@@ -51,14 +45,18 @@ func init() {
 		fmt.Println()
 		fmt.Println("Known trackers:")
 		fmt.Println()
-		for _, loc := range tracker.KnownTrackers() {
-			fmt.Printf("\t%s\n", loc)
+		for _, host := range ranger.KnownTrackers() {
+			fmt.Printf("\t%s\n", host)
 		}
 		fmt.Println()
-		fmt.Printf("project home: %s\n", projectHome)
+		fmt.Println("Known shops:")
+		fmt.Println()
+		for _, host := range ranger.KnownShops() {
+			fmt.Printf("\t%s\n", host)
+		}
+		fmt.Println()
+		fmt.Printf("Project home: %s\n", projectHome)
 	}
-
-	registerTrackers()
 }
 
 func main() {
@@ -80,10 +78,20 @@ func main() {
 		os.Exit(2)
 	}
 
-	tracker.Debug = debug
-	cleanURL, err := tracker.Untrack(cmd.Arg(0))
+	ranger.Debug = debug
+	cleanURL, err := ranger.Untrack(cmd.Arg(0))
 	if err != nil {
-		log.Fatal(err)
+		if _, ok := errors.Cause(err).(ranger.UntrackErr); ok {
+			if debug {
+				fmt.Fprintf(os.Stderr, "%+v\n", err)
+			} else {
+				fmt.Fprintln(os.Stderr, err)
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "%+v\n", err)
+			fmt.Println("There was an unexpected error; please report this as a bug.")
+		}
+		os.Exit(1)
 	}
 
 	if printOnly || debug {
@@ -91,82 +99,4 @@ func main() {
 	} else if err := open.Start(cleanURL); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
-}
-
-// registerTrackers ...
-func registerTrackers() {
-	// https://regex101.com/r/kv1rVs/1
-	wlocRe := regexp.MustCompile(`(?:window|document)\.location\s*=\s*['"](.*?)['"]`)
-
-	paramExtractor := func(pkey string) tracker.ExtractTarget {
-		return func(trackURL *url.URL) (*url.URL, error) {
-			return url.Parse(trackURL.Query().Get(pkey))
-		}
-	}
-
-	//  http://ali.pub/ahgiu
-	tracker.RegisterTracker("s.click.aliexpress.com", paramExtractor("dl_target_url"))
-	// http://fas.st/mKKaRE
-	tracker.RegisterTracker("ad.admitad.com", paramExtractor("ulp"))
-	tracker.RegisterTracker("lenkmio.com", paramExtractor("ulp"))
-	// http://ali.ski/gkMqy
-	tracker.RegisterTracker("alitems.com", paramExtractor("ulp"))
-
-	tracker.RegisterTracker("www.youtube.com", paramExtractor("q"))
-
-	epn := func(trackURL *url.URL) (*url.URL, error) {
-		return extractEpnRedirect(trackURL.String(), wlocRe)
-	}
-	// http://ali.pub/2c753s
-	// https://goo.gl/VLb3Xd
-	tracker.RegisterTracker("epnclick.ru", epn)
-	// http://ali.pub/2c76pq
-	tracker.RegisterTracker("shopeasy.by", epn)
-}
-
-// extracts 'windows.location' value from <script></script> element tag
-func extractEpnRedirect(rawurl string, wlocRe *regexp.Regexp) (*url.URL, error) {
-	resp, err := http.Get(rawurl)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New("epn: status not ok")
-	}
-	doc, err := html.Parse(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	for _, script := range visit(nil, doc) {
-		for _, line := range strings.Split(script, "\n") {
-			line = strings.Trim(line, " \t")
-			if line == "" || strings.HasPrefix(line, "//") {
-				continue
-			}
-			groups := wlocRe.FindStringSubmatch(line)
-			if len(groups) > 1 {
-				if targetURL, err := url.Parse(groups[1]); err == nil {
-					to := targetURL.Query().Get("to")
-					if to != "" {
-						return url.Parse(to)
-					}
-					return targetURL, err
-				}
-			}
-		}
-	}
-	return url.Parse(rawurl)
-}
-
-func visit(scripts []string, n *html.Node) []string {
-	if n.Type == html.ElementNode && n.Data == "script" && n.FirstChild != nil {
-		scripts = append(scripts, n.FirstChild.Data)
-	}
-
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		scripts = visit(scripts, c)
-	}
-	return scripts
 }

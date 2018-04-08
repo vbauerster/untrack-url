@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/vbauerster/untrack-url/tracker"
+	"github.com/vbauerster/untrack-url/ranger"
 )
 
 func setupRedirectServer(source, destination string) *httptest.Server {
@@ -92,8 +92,7 @@ func TestUntrack(t *testing.T) {
 		},
 	}
 
-	// tracker.Debug = true
-	registerTrackers()
+	ranger.Debug = true
 	for name, tc := range cases {
 		setupAndTest(t, name, tc)
 	}
@@ -115,14 +114,14 @@ func setupAndTest(t *testing.T, name string, tc testCase) {
 	rs := setupRedirectServer("/", tsURL.String())
 	defer rs.Close()
 
-	fn := tracker.RegisterTracker(tc.trackerHost, nil)
+	fn := ranger.RegisterTracker(tc.trackerHost, nil)
 	if fn == nil {
 		t.Fail()
 	}
-	tracker.RegisterTracker(tsURL.Host, fn)
-	tracker.RegisterTracker(tc.trackerHost, fn)
+	ranger.RegisterTracker(tsURL.Host, fn)
+	ranger.RegisterTracker(tc.trackerHost, fn)
 
-	if target, err := tracker.Untrack(rs.URL); err == nil {
+	if target, err := ranger.Untrack(rs.URL); err == nil {
 		if target != tc.cleanTarget {
 			t.Errorf("%s: expected: %q, got: %q\n", name, tc.cleanTarget, target)
 		}
