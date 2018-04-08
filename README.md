@@ -2,15 +2,15 @@
 
 **Why?**
 
-If you follow http://ali.ski/gkMqy and commit a purchase, somebody will earn some money on you.
+If you follow a short ad url, like http://ali.ski/gkMqy and commit a purchase, somebody will earn some money on you.
 
-If you untrack the link with help of `untrack-url`, like:
+However, you can untrack the url with help of `untrack-url`, like:
 
 ```
 $ untrack-url http://ali.ski/gkMqy
 ```
 
-all tracking url params will be wiped out and **nobody** will earn money on you.
+all tracking query params will be wiped out and **nobody** will earn money on you.
 
 ## Installation
 `untrack-url` requires Go 1.7 or later.
