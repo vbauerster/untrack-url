@@ -29,7 +29,7 @@ func follow(rawurl string) (*url.URL, error) {
 	// number of redirects followed
 	var redirectsFollowed int
 	client := &http.Client{
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
