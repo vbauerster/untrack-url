@@ -2,7 +2,7 @@
 
 **Why?**
 
-If you follow such shopping [url](http://ali.ski/gkMqy), and commit a purchase, some advertising party will earn some money on you.
+If you follow [such](http://ali.ski/gkMqy) shopping url, and commit a purchase, some advertising party will earn some money on you.
 
 However, you can prevent this by feeding the short url into `untrack-url` tool:
 
