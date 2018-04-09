@@ -2,15 +2,15 @@
 
 **Why?**
 
-If you follow a short ad url, like http://ali.ski/gkMqy and commit a purchase, somebody will earn some money on you.
+If you follow such shopping [url](http://ali.ski/gkMqy), and commit a purchase, some advertising party will earn some money on you.
 
-However, you can untrack the url with help of `untrack-url`, like:
+However, you can prevent this by feeding the short url into `untrack-url` tool:
 
 ```
 $ untrack-url http://ali.ski/gkMqy
 ```
 
-all tracking query params will be wiped out and **nobody** will earn money on you.
+all tracking query params will be removed and **nobody** will earn money on you, except the seller :innocent:
 
 ## Installation
 `untrack-url` requires Go 1.7 or later.
