@@ -10,7 +10,7 @@ However, you can prevent this by feeding the short url into `untrack-url` tool:
 $ untrack-url http://ali.ski/gkMqy
 ```
 
-all tracking query params will be removed and **nobody** will earn money on you, except the seller :innocent:
+all tracking query params will be removed, before opening in browser, and **nobody** will earn money on you, except the seller :innocent:
 
 ## Installation
 `untrack-url` requires Go 1.7 or later.
