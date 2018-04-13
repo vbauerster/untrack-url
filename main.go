@@ -32,7 +32,9 @@ var (
 )
 
 func init() {
-	cmd = flag.NewFlagSet(cmdName, flag.ContinueOnError)
+	// NewFlagSet for the sake of cmd.SetOutput
+	cmd = flag.NewFlagSet(cmdName, flag.ExitOnError)
+	cmd.SetOutput(os.Stdout)
 	cmd.BoolVar(&printOnly, "p", false, "print only: don't open URL in browser")
 	cmd.BoolVar(&debug, "d", false, "debug: print debug info, implies -p")
 	cmd.BoolVar(&showVersion, "v", false, "print version number")
@@ -40,7 +42,6 @@ func init() {
 	cmd.Usage = func() {
 		fmt.Printf("Usage: %s [OPTIONS] URL\n\n", cmdName)
 		fmt.Println("OPTIONS:")
-		cmd.SetOutput(os.Stdout)
 		cmd.PrintDefaults()
 		fmt.Println()
 		fmt.Println("Known trackers:")
@@ -60,13 +61,7 @@ func init() {
 }
 
 func main() {
-	if err := cmd.Parse(os.Args[1:]); err != nil {
-		if err == flag.ErrHelp {
-			os.Exit(0)
-		} else {
-			os.Exit(1)
-		}
-	}
+	cmd.Parse(os.Args[1:])
 
 	if showVersion {
 		fmt.Printf("%s: %s (runtime: %s)\n", cmdName, version, runtime.Version())
