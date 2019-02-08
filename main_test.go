@@ -24,6 +24,7 @@ func setupTestServer(path string, handler func(w http.ResponseWriter, r *http.Re
 }
 
 type testCase struct {
+	name        string
 	trackerHost string
 	targetKey   string
 	dirtyTarget string
@@ -56,35 +57,40 @@ func TestUntrack(t *testing.T) {
 		}
 	}
 
-	cases := map[string]testCase{
-		"targetKey: dl_target_url": {
+	cases := []testCase{
+		{
+			name:        "targetKey: dl_target_url",
 			trackerHost: "s.click.aliexpress.com",
 			targetKey:   "dl_target_url",
 			dirtyTarget: "https://ru.aliexpress.com/store?a=A&SearchText=phone&b=B&c=C",
 			cleanTarget: "https://ru.aliexpress.com/store?SearchText=phone",
 			handleMaker: troubleMaker,
 		},
-		"targetKey: ulp": {
+		{
+			name:        "targetKey: ulp",
 			trackerHost: "ad.admitad.com",
 			targetKey:   "ulp",
 			dirtyTarget: "https://ru.aliexpress.com/store?a=A&SearchText=phone&b=B&c=C",
 			cleanTarget: "https://ru.aliexpress.com/store?SearchText=phone",
 			handleMaker: troubleMaker,
 		},
-		"targetKey: q": {
+		{
+			name:        "targetKey: q",
 			trackerHost: "www.youtube.com",
 			targetKey:   "q",
 			dirtyTarget: "https://ad.admitad.com?ulp=https%3A%2F%2Fru.aliexpress.com%2Fstore%3Fa%3DA%26SearchText%3Dphone%26b%3DB%26c%3DC",
 			cleanTarget: "https://ru.aliexpress.com/store?SearchText=phone",
 			handleMaker: troubleMaker,
 		},
-		"epn": {
+		{
+			name:        "epn",
 			trackerHost: "epnclick.ru",
 			cleanTarget: "http://www.gearbest.com/cell-phones/pp_470619.html",
 			script:      "window.location = 'http://www.gearbest.com/cell-phones/pp_470619.html?wid=21&utm_source=epn';",
 			handleMaker: makeScriptHandler,
 		},
-		"enp with to": {
+		{
+			name:        "enp with to",
 			trackerHost: "shopeasy.by",
 			cleanTarget: "https://tmall.aliexpress.com/w/wholesale-multicooker.html?SearchText=multicooker",
 			script:      "document.location='/redirect/cpa/o/p5brt6my0anysg50o8syzaw1yyu1mhxv/?to=https%3A%2F%2Ftmall.aliexpress.com%2Fw%2Fwholesale-multicooker.html%3Fspm%3Da2g02.9334986.kitchen-appliances.8.21154eaexojb3q%26site%3Drus%26SearchText%3Dmulticooker%26needQuery%3Dn%26initiative_id%3DSB_20171210225006%26isCompetitiveProducts%3Dy%26g%3Dy';",
@@ -93,13 +99,13 @@ func TestUntrack(t *testing.T) {
 	}
 
 	ranger.Debug = true
-	for name, tc := range cases {
-		setupAndTest(t, name, tc)
+	for _, tc := range cases {
+		setupAndTest(t, tc)
 	}
 }
 
 // setupAndTest ...
-func setupAndTest(t *testing.T, name string, tc testCase) {
+func setupAndTest(t *testing.T, tc testCase) {
 	ts := setupTestServer("/", tc.handleMaker(tc.script))
 	defer ts.Close()
 	tsURL, err := url.Parse(ts.URL)
@@ -123,7 +129,7 @@ func setupAndTest(t *testing.T, name string, tc testCase) {
 
 	if target, err := ranger.Untrack(rs.URL); err == nil {
 		if target != tc.cleanTarget {
-			t.Errorf("%s: expected: %q, got: %q\n", name, tc.cleanTarget, target)
+			t.Errorf("%s: expected: %q, got: %q\n", tc.name, tc.cleanTarget, target)
 		}
 	} else {
 		t.Fail()
